@@ -1,0 +1,59 @@
+{
+  "config": {
+    "chainId": 1337,
+    "constantinoplefixblock": 0,
+    "clique": {
+      "blockperiodseconds": 15,
+      "epochlength": 30000
+    }
+  },
+  "coinbase": "0x0000000000000000000000000000000000000000",
+  "difficulty": "0x1",
+  "extraData": "0x00000000000000000000000000000000000000000000000000000000000000008ae060095ed91534ac36504aabdea165d2d90c6c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "gasLimit": "0x8000000",
+  "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "nonce": "0x0",
+  "timestamp": "0x5c51a607",
+  "alloc": {
+    "fe3b557e8fb62b89f4916b721be55ceb828dbd73": {
+      "privateKey": "8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63",
+      "comment": "private key and this comment are ignored.  In a real chain, the private key should NOT be stored",
+      "balance": "0xad78ebc5ac6200000"
+    },
+    "627306090abaB3A6e1400e9345bC60c78a8BEf57": {
+      "privateKey": "c87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3",
+      "comment": "private key and this comment are ignored.  In a real chain, the private key should NOT be stored",
+      "balance": "90000000000000000000000"
+    },
+    "f17f52151EbEF6C7334FAD080c5704D77216b732": {
+      "privateKey": "ae6ae8e5ccbfb04590405997ee2d52d2b330726137b875053c36d94e974d162f",
+      "comment": "private key and this comment are ignored.  In a real chain, the private key should NOT be stored",
+      "balance": "90000000000000000000000"
+    },
+    "69B436F5Ba26b98c4b3d8a96edd2e96c02e6e799": {
+      "privateKey": "e3425c0eef75b3148ff13a6331d76f5f818b245617364ce095e2c23cd684e947",
+      "comment": "Customer1",
+      "balance": "90000000000000000000000"
+    },
+    "0Eb7586B83Ce5f2B6f9E52A9a6F043281388be8b": {
+      "privateKey": "eebb91e80f09d5f6eb0d50b6844ff753834cc0c66856e74839f4f74aca295cb0",
+      "comment": "Customer2",
+      "balance": "90000000000000000000000"
+    },
+    "cd6e86a5de391eaA96ED9f9Fd3Fa355Ee46ad01F": {
+      "privateKey": "a03eb157b22ee33cec6dc77801df6d806b6e7b1beec68fe804cd96195e456078",
+      "comment": "Customer3",
+      "balance": "90000000000000000000000"
+    },
+    "248b4C6a15716C6b0d5E7Ee7D1a1FB2BA2265347": {
+      "privateKey": "c544bc4f4f7f87e5096d49dc4ed3f2f741cbdf026d4e6c949bb0582a5c1ca0e9",
+      "comment": "Customer4",
+      "balance": "90000000000000000000000"
+    },
+    "2B285bbE6DF740C660Db33F1CcaB9187444C40f5": {
+      "privateKey": "87d8bd24d2afe8536ad0664feb344a6f1ce66c0c266b9f8765a90b8da09c1abf",
+      "comment": "Customer5",
+      "balance": "90000000000000000000000"
+    }
+  }
+}

@@ -1,0 +1,1 @@
+const contract=require("./contract.json");

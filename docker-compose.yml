@@ -1,0 +1,278 @@
+version: '3.4'
+
+networks:
+  besu-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.240.0/24
+x-aws-vpc: 'vpc-8c3680f1'
+x-redis-def: &redis-def
+  image: redis:alpine
+
+x-elasticsearch-def: &elasticsearch-def
+  build: ./elasticsearch
+  environment:
+    - bootstrap.memory_lock=true
+    - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+    - 'http.host=0.0.0.0'
+    - 'transport.host=127.0.0.1'
+  ulimits:
+    memlock:
+      soft: -1
+      hard: -1
+    nofile:
+      soft: 65536
+      hard: 65536
+  cap_add:
+    - IPC_LOCK
+
+x-kibana-def: &kibana-def
+  image: docker.elastic.co/kibana/kibana:7.9.3
+  environment:
+    ELASTICSEARCH_HOSTS: 'http://elasticsearch:9200'
+    XPACK_MONITORING_ENABLED: 'true'
+    XPACK_MONITORING_COLLECTION_ENABLED: 'true'
+    SERVER_NAME: 'localhost'
+  depends_on:
+    - elasticsearch
+  links:
+    - elasticsearch
+  ports:
+    - 5601:5601/tcp
+
+x-logstash-def: &logstash-def
+  build: ./logstash
+  environment:
+    - ES_HOST=http://elasticsearch:9200
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+  depends_on:
+    - redis
+    - elasticsearch
+  links:
+    - redis
+    - elasticsearch
+
+x-filebeat-def: &filebeat-def
+  build: ./filebeat
+  environment:
+    - ENV_NAME=dev
+    - IP_ADDRESS=127.0.0.1
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+  depends_on:
+    - redis
+  links:
+    - redis
+  volumes:
+    - ./logs/besu/:/var/log/besu/
+
+x-metricbeat-def: &metricbeat-def
+  build: ./metricbeat
+  environment:
+    - ENV_NAME=dev
+    - IP_ADDRESS=127.0.0.1
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+  depends_on:
+    - redis
+  links:
+    - redis
+
+services:
+  bootnode:
+    container_name: bootnode
+    image: hyperledger/besu:21.7.2
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu --data-path=/opt/besu/data \
+        --genesis-file=/opt/besu/cliquegenesis.json --rpc-http-enabled \
+        --host-allowlist="*" --rpc-http-cors-origins="all" \
+        --rpc-ws-enabled --rpc-ws-port=8550 \
+        --graphql-http-enabled --graphql-http-port=8551 --graphql-http-cors-origins=["*"] \
+        --metrics-enabled --metrics-host="0.0.0.0" --metrics-port=9545 \
+        --rpc-http-api=EEA,ETH,NET,CLIQUE;
+    volumes:
+      - ./cliquegenesis.json:/opt/besu/cliquegenesis.json
+      - ./node1/data:/opt/besu/data
+      - ./logs/besu:/var/log/
+    ports:
+      - 8545:8545
+      - 30303:30303
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.20
+
+  node:
+    container_name: node
+    image: hyperledger/besu:21.7.2
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        sleep 10;
+        /opt/besu/bin/besu --data-path=/opt/besu/data \
+        --genesis-file=/opt/besu/cliquegenesis.json --rpc-http-enabled \
+        --host-allowlist="*" --rpc-http-cors-origins="all" \
+        --metrics-enabled --metrics-host="0.0.0.0" --metrics-port=9545 \
+        --bootnodes=enode://dee315a1f2b34f4960ccbc9ba77054c516e928d0b7eda0b3befdcd1fda60340841fda16e398886daf79ee5de9b3c6f2434e57157b90d7e5d4eeacdfe972e83aa@172.16.240.20:30303 --p2p-port=30303;
+    volumes:
+      - ./cliquegenesis.json:/opt/besu/cliquegenesis.json
+      - ./node2/data:/opt/besu/data
+      - ./logs/besu:/var/log/
+      - ./log-config.xml:/config/log-config.xml
+    ports:
+      - 8546:8545
+      - 30304:30303
+    depends_on:
+      - bootnode
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.21
+
+  node2:
+    container_name: node2
+    image: hyperledger/besu:21.7.2
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        sleep 10;
+        /opt/besu/bin/besu --data-path=/opt/besu/data \
+        --genesis-file=/opt/besu/cliquegenesis.json --rpc-http-enabled \
+        --host-allowlist="*" --rpc-http-cors-origins="all" \
+        --metrics-enabled --metrics-host="0.0.0.0" --metrics-port=9545 \
+        --bootnodes=enode://dee315a1f2b34f4960ccbc9ba77054c516e928d0b7eda0b3befdcd1fda60340841fda16e398886daf79ee5de9b3c6f2434e57157b90d7e5d4eeacdfe972e83aa@172.16.240.20:30303 --p2p-port=30303;
+    volumes:
+      - ./cliquegenesis.json:/opt/besu/cliquegenesis.json
+      - ./node3/data:/opt/besu/data
+      - ./logs/besu:/var/log/
+      - ./log-config.xml:/config/log-config.xml
+    ports:
+      - 8547:8545
+      - 30305:30303
+    depends_on:
+      - bootnode
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.22
+
+  node3:
+    container_name: node3
+    image: hyperledger/besu:21.7.2
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        sleep 10;
+        /opt/besu/bin/besu --data-path=/opt/besu/data \
+        --genesis-file=/opt/besu/cliquegenesis.json --rpc-http-enabled \
+        --host-allowlist="*" --rpc-http-cors-origins="all" \
+        --metrics-enabled --metrics-host="0.0.0.0" --metrics-port=9545 \
+        --bootnodes=enode://dee315a1f2b34f4960ccbc9ba77054c516e928d0b7eda0b3befdcd1fda60340841fda16e398886daf79ee5de9b3c6f2434e57157b90d7e5d4eeacdfe972e83aa@172.16.240.20:30303 --p2p-port=30303;
+    volumes:
+      - ./cliquegenesis.json:/opt/besu/cliquegenesis.json
+      - ./node4/data:/opt/besu/data
+      - ./logs/besu:/var/log/
+      - ./log-config.xml:/config/log-config.xml
+    ports:
+      - 8548:8545
+      - 30306:30303
+    depends_on:
+      - bootnode
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.23
+
+  explorer:
+    build: block-explorer-light/.
+    image: block-explorer-light:develop
+    depends_on:
+      - bootnode
+    ports:
+      - 25000:80/tcp
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.50
+
+  ethexplorer:
+    image: alethio/ethereum-lite-explorer
+    environment:
+      - APP_NODE_URL=http://localhost:8545;
+    ports:
+      - 25001:80
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.51
+
+  prometheus:
+    image: 'prom/prometheus'
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090/tcp
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.10
+
+  grafana:
+    image: 'grafana/grafana'
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+    volumes:
+      - ./config/grafana/provisioning/:/etc/grafana/provisioning/
+      - grafana:/var/lib/grafana
+    ports:
+      - 3001:3000/tcp
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.13
+
+  redis:
+    <<: *redis-def
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.34
+
+  elasticsearch:
+    <<: *elasticsearch-def
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.11
+
+  kibana:
+    <<: *kibana-def
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.12
+
+  filebeat:
+    <<: *filebeat-def
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.38
+
+  logstash:
+    <<: *logstash-def
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.37
+
+  metricbeat:
+    <<: *metricbeat-def
+    networks:
+      besu-network:
+        ipv4_address: 172.16.240.39
+
+volumes:
+  public-keys:
+
+  prometheus:
+
+  grafana:
