@@ -50,6 +50,8 @@ x-logstash-def: &logstash-def
   depends_on:
     - redis
     - elasticsearch
+  restart: always
+  mem_limit: 2g
   links:
     - redis
     - elasticsearch
