@@ -260,12 +260,6 @@ services:
       besu-network:
         ipv4_address: 172.16.240.38
 
-  logstash:
-    <<: *logstash-def
-    networks:
-      besu-network:
-        ipv4_address: 172.16.240.37
-
   metricbeat:
     <<: *metricbeat-def
     networks:
