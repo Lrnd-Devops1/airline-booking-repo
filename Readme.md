@@ -121,7 +121,8 @@ Try access the endpoints for metrics (replace localhost with ec2 instance public
 
 ## Connect the deployed network to Remix
 
-Network Url : http://localhost:8545
+Network Url : http://localhost:8545 (replace localhost with ec2 instance public DNS or IP)
+
 ChainId: 1337
 
 ## Contract details
