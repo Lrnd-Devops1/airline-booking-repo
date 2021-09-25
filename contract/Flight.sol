@@ -9,7 +9,6 @@ enum FlightStatus {
     SCHEDULED,
     ONTIME,
     DELAYED,
-    DEPARTED,
     CANCELLED
 }
 
@@ -17,16 +16,20 @@ contract Flight {
     // Flight details
     string public flightNumber;
     uint256 public flightTime;
+    uint256 public origFlightTime;
     FlightStatus public flightStatus;
-    uint256 public flightStatusUpdateTime;
+    uint256 flightStatusUpdateTime;
+    string public src;
+    string public dst;
 
     // Seating information
-    PlaneModel model;
+    PlaneModel public model;
     mapping(SeatCategory => uint256) public seats;
     SeatCategory[] categories;
     uint256 totalSeats;
     uint256 bookedSeats;
     mapping(string => Ticket) cfidToTicketMap;
+    string[] cfids;
 
     address owner;
     
@@ -34,17 +37,19 @@ contract Flight {
     error SeatNotAvailableInCategory();
     error InvalidFlightStatusChange();
     
-    constructor(string memory flNum, uint256 flTime) {
+    constructor(string memory flNum, uint256 flTime, string memory flModel) {
         owner = msg.sender;
         flightNumber = flNum;
-        flightTime = flTime;
+        flightTime = origFlightTime = flTime;
         flightStatus = FlightStatus.SCHEDULED;
         flightStatusUpdateTime = 0;
-        model = new AirbusA320Neo();
+        
+        model = getPlaneModel(flModel, owner);
         categories = model.getCategories();
+        
         bookedSeats = 0;
         for(uint256 i = 0; i < categories.length; ++i) {
-            seats[categories[i]] = model.getLayout(categories[i]);
+            seats[categories[i]] = model.layout(categories[i]);
             totalSeats += seats[categories[i]];
         }
     }
@@ -61,12 +66,12 @@ contract Flight {
     }
     
     modifier flightValid {
-        require(flightStatus != FlightStatus.DEPARTED && flightStatus != FlightStatus.CANCELLED, "Flight status not valid for this action");
+        require(flightStatus == FlightStatus.SCHEDULED, "Flight status not valid for this action");
         _;
     }
     
     function bookSeat(SeatCategory category) payable external flightValid returns (string memory) {
-        require(msg.value == model.getPrice(category), "Not enough Ether provided");
+        require(msg.value == model.prices(category), "Not enough Ether provided");
 
         if(bookedSeats == totalSeats) {
             revert FlightFull();
@@ -80,6 +85,7 @@ contract Flight {
 
         Ticket tkt = new Ticket{value: msg.value}(cfid, owner, msg.sender, this, category);
         cfidToTicketMap[cfid] = tkt;
+        cfids.push(cfid);
 
         --seats[category];
         ++bookedSeats;
@@ -99,18 +105,26 @@ contract Flight {
         ++seats[category];
         --bookedSeats;
         
-        uint256 refund = model.getPrice(category) - uint256(model.getPrice(category) * model.cancellationPenalty());
+        uint256 refund = model.prices(category) - uint256((model.prices(category) * model.getCancellationPenalty(flightTime)) / 100);
         
         return refund;
     }
-    
-    function updateStatus(FlightStatus status) external flightValid onlyAirline {
-        if(status < flightStatus) {
-            revert InvalidFlightStatusChange();
-        }
-        
+
+    function _updateStatus(FlightStatus status) private {
         flightStatus = status;
         flightStatusUpdateTime = block.timestamp;
+    }
+
+    function delayFlight(uint256 newFlightTime) external flightValid onlyAirline {
+        origFlightTime = flightTime;
+        flightTime = newFlightTime;
+        
+        _updateStatus(FlightStatus.DELAYED);
+    }
+    
+    function updateStatus(FlightStatus status) external flightValid onlyAirline {
+        require(status != FlightStatus.DELAYED, "Call delayFlight to do this.");
+        _updateStatus(status);
     }
     
     function flightCancelledClaim(string calldata cfid) public onlyTicket(cfid) {
@@ -122,7 +136,7 @@ contract Flight {
         --bookedSeats;
     }
     
-    function delayClaim(string calldata cfid) public flightValid onlyTicket(cfid) returns (uint256) {
+    function delayClaim(string calldata cfid) public onlyTicket(cfid) returns (uint256) {
         Ticket tkt = cfidToTicketMap[cfid];
 
         SeatCategory category = tkt.seatCategory();
@@ -130,9 +144,29 @@ contract Flight {
         ++seats[category];
         --bookedSeats;
         
-        uint256 refund = model.getPrice(category) - uint256(model.getPrice(category) * model.delayPenalty());
+        uint256 refund = model.prices(category) - uint256((model.prices(category) * model.getDelayPenalty(flightTime, origFlightTime)) / 100);
         
         return refund;
+    }
+    
+    function collectMoney() public onlyAirline {
+        require(block.timestamp > flightTime + (7 days), "Cannot collect money yet. Wait for upto 7 days after departure.");
+        
+        for(uint256 i = 0; i < cfids.length; ++i) {
+            Ticket tkt = cfidToTicketMap[cfids[i]];
+            
+            if(tkt.cancelled()) continue; // Already processed
+            
+            tkt.collectMoney();
+        }
+    }
+    
+    function setSource(string calldata _src) public onlyAirline {
+        src = _src;
+    }
+    
+    function setDest(string calldata _dst) public onlyAirline {
+        dst = _dst;
     }
 }
 
@@ -142,7 +176,7 @@ contract Ticket {
     address public customer;
     Flight flightContract;
     SeatCategory public seatCategory;
-    bool cancelled;
+    bool public cancelled;
     
     modifier onlyCustomer {
         require(msg.sender == customer, "Only the ticket owner can do this");
@@ -151,6 +185,11 @@ contract Ticket {
     
     modifier onlyAirline {
         require(msg.sender == airline, "Only the airlines can do this");
+        _;
+    }
+
+    modifier onlyFlight() {
+        require(address(flightContract) == msg.sender, "Only the flight contract can do this");
         _;
     }
     
@@ -162,6 +201,7 @@ contract Ticket {
     event Booked(address indexed, address indexed, string);
     event Refunded(address indexed, uint256);
     event Cancelled(address indexed, string);
+    event Collected(address indexed, uint256);
     
     constructor(string memory _confirmationID, address _airline, address _customer, Flight _flightContract, SeatCategory _seatCategory) payable {
         airline = _airline;
@@ -178,8 +218,8 @@ contract Ticket {
         return address(this).balance;
     }
     
-    function cancel() external payable onlyCustomer notCancelled {
-        require(flightContract.flightTime() - (2 hours) >= block.timestamp, "Ticket can only be cancelled two hours prior to departure");
+    function cancel() external onlyCustomer notCancelled {
+        require(block.timestamp < flightContract.flightTime() - (2 hours), "Ticket can only be cancelled two hours prior to departure");
         uint256 refund = flightContract.cancelTicket(confirmationID);
         uint256 balance = address(this).balance;
         
@@ -191,10 +231,13 @@ contract Ticket {
         emit Cancelled(customer, confirmationID);
         emit Refunded(customer, refund);
         emit Refunded(airline, balance - refund);
+        
+        assert(address(this).balance == 0);
     }
     
     function claim() external onlyCustomer notCancelled {
-        require(flightContract.flightTime() + (24 hours) >= block.timestamp, "Claim can be made 24 hours after departure");
+        require(block.timestamp >= flightContract.flightTime() + (24 hours), "Claim can be made 24 hours after departure");
+        require(block.timestamp < flightContract.flightTime() + (7 days), "Claim can be made only upto 7 days after departure");
         
         FlightStatus status = flightContract.flightStatus();
         if(status == FlightStatus.CANCELLED) {
@@ -208,6 +251,8 @@ contract Ticket {
 
             emit Cancelled(customer, confirmationID);
             emit Refunded(customer, balance);
+            
+            assert(address(this).balance == 0);
         }
         else if(status == FlightStatus.DELAYED) {
             uint256 refund = flightContract.delayClaim(confirmationID);
@@ -221,25 +266,36 @@ contract Ticket {
             emit Cancelled(customer, confirmationID);
             emit Refunded(customer, refund);
             emit Refunded(airline, balance - refund);
+
+            assert(address(this).balance == 0);
         }
         else if(status == FlightStatus.SCHEDULED) {
-            if( ! ( ( flightContract.flightTime() - (24 hours)) <= flightContract.flightStatusUpdateTime()
-                && flightContract.flightStatusUpdateTime() < flightContract.flightTime() ) ) {
-                uint256 balance = address(this).balance;
+            uint256 balance = address(this).balance;
 
-                flightContract.flightCancelledClaim(confirmationID);
+            flightContract.flightCancelledClaim(confirmationID);
 
-                payable(customer).transfer(balance);
+            payable(customer).transfer(balance);
 
-                cancelled = true;
-                
-                emit Cancelled(customer, confirmationID);
-                emit Refunded(customer, balance);
-            }
+            cancelled = true;
+            
+            emit Cancelled(customer, confirmationID);
+            emit Refunded(customer, balance);
+
+            assert(address(this).balance == 0);
         }
         else {
-            // do nothing
+            // do nothing, flight was on time. No refunds.
         }
+    }
+    
+    function collectMoney() public onlyFlight {
+        uint256 balance = address(this).balance;
+
+        payable(airline).transfer(balance);
+        
+        emit Collected(airline, balance);
+        
+        assert(address(this).balance == 0);
     }
 }
 

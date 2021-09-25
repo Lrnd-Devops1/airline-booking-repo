@@ -129,7 +129,7 @@ ChainId: 1337
 Files
 
 1. Flight.sol (Flight and Ticket)
-2. Place.sol (Plane model)
+2. PlaneModel.sol (Plane model abstract contract, AirbusA320Neo and BoeingB737Max)
 
 ### Description
 
