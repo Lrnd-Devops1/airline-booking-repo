@@ -109,7 +109,32 @@ docker-compose up -d
 Once successful should show the result as below
 ![Docker containers](images/Docker-instances.png)
 
+Try access the endpoints for metrics (replace localhost with ec2 instance public DNS or IP)
+
+[Grafana](http://localhost:3001/d/XE4V0WGZz/besu-overview?orgId=1&refresh=10s)
+
+[Prometheus](http://localhost:9090)
+
+[Block explorer](http://localhost:25000/)
+
+[KIbana](http://localhost:5601/)
+
 ## Connect the deployed network to Remix
 
-Network Url : http://<aws-ec2-ip>:8545
+Network Url : http://localhost:8545
 ChainId: 1337
+
+## Contract details
+
+Files
+
+1. Flight.sol (Flight and Ticket)
+2. Place.sol (Plane model)
+
+### Description
+
+1. There are two main contracts: Flight and Ticket
+2. Airline deploys a Flight contract for a particular scheduled flight.
+3. Customer books a seat (a function in Flight contract), pays and gets a reference to the Ticket contract (deployed from the Flight contract), with a confirmation ID.
+4. Customer related operations are done in the Ticket contract and Flight contract is updated.
+5. Flight related operations are done in Flight contract by the Airlines.
