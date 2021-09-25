@@ -1,0 +1,61 @@
+{
+    "accounts":[
+        {
+            "name": "EagleAirlineAdmin1",
+            "address": "0xfe3b557e8fb62b89f4916b721be55ceb828dbd73",
+            "privateKey": "8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63"
+        },
+        {
+            "name": "EagleAirlineAdmin2",
+            "address": "0x627306090abaB3A6e1400e9345bC60c78a8BEf57",
+            "privateKey": "c87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3"
+        },
+        {
+            "name": "Customer1",
+            "address": "0xf17f52151EbEF6C7334FAD080c5704D77216b732",
+            "privateKey": "ae6ae8e5ccbfb04590405997ee2d52d2b330726137b875053c36d94e974d162f"
+        },
+        {
+            "name": "Customer2",
+            "address": "0xD405fD70B8FccEBf4aFC6bC58D5F8a495e7FDeb8",
+            "privateKey": "56435bdc46c4c0ee7a24b6af725dd19b36d97b65b9be9e3931efd0e580b9d0cb"
+        },
+        {
+            "name": "Customer3",
+            "address": "0x69B436F5Ba26b98c4b3d8a96edd2e96c02e6e799",
+            "privateKey": "e3425c0eef75b3148ff13a6331d76f5f818b245617364ce095e2c23cd684e947"
+        }
+    ],
+    "planeModels":[
+        {
+            "code":"A320NEO",
+            "seatCategory": [
+                {"name": "ECONOMY" , "value" : 0, "cost": 100000000000},
+                {"name": "PREMIUM_ECONOMY" , "value" : 1, "cost": 200000000000},
+                {"name": "BUSINESS" , "value" : 2, "cost": 300000000000},
+                {"name": "FIRST_CLASS" , "value": 3, "cost": 400000000000 }
+            ]
+        },
+        {
+            "code":"B737MAX",
+            "seatCategory": [
+                {"name": "ECONOMY" , "value" : 0, "cost": 120000000000},
+                {"name": "PREMIUM_ECONOMY" , "value" : 1, "cost": 220000000000},
+                {"name": "BUSINESS" , "value" : 2, "cost": 320000000000},
+                {"name": "FIRST_CLASS" , "value": 3, "cost": 420000000000 }
+            ]
+        }
+    ],
+    "seatCategory": [
+        {"name": "ECONOMY" , "value" : 0, "cost": 100000000000},
+        {"name": "PREMIUM_ECONOMY" , "value" : 1, "cost": 200000000000},
+        {"name": "BUSINESS" , "value" : 2, "cost": 300000000000},
+        {"name": "FIRST_CLASS" , "value": 3, "cost": 400000000000 }
+    ],
+    "flightStatus":[
+        {"name": "SCHEDULED", "value": 0 },
+        {"name": "ONTIME", "value": 1 },
+        {"name": "DELAYED", "value": 2 },
+        {"name": "CANCELLED", "value": 3 }
+    ]
+}
